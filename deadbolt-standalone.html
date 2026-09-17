@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Deadbolt</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0b0b0c; --surface1:#141416; --surface2:#1c1c1f; --surface3:#242428;
+  --border:#2c2c30; --border-strong:#3a3a40;
+  --text:#f2f2f0; --text2:#a3a3a8; --text3:#6c6c72;
+  --accent:#e8e6df; --danger:#e2493f; --danger-bg:#2a1614;
+  --warn:#e8a23a; --warn-bg:#2a2114;
+  --ok:#3fae6a; --ok-bg:#132318;
+  --info:#4a9fe0; --info-bg:#12212c;
+  --purple:#9b7fe0; --pink:#e06fa0;
+  --radius:14px; --radius-sm:9px;
+  font-size:16px;
+}
+:root:not([data-theme="light"]){}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{background:var(--bg); color:var(--text); margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased;}
+body{padding-bottom:90px;}
+a{color:inherit;}
+button{font-family:inherit;}
+input,select,textarea{font-family:inherit; font-size:16px;}
+::-webkit-scrollbar{width:0; height:0;}
+
+.hide{display:none !important;}
+
+/* Top bar */
+.topbar{position:sticky; top:0; z-index:40; background:rgba(11,11,12,.92); backdrop-filter:blur(10px); border-bottom:1px solid var(--border); padding:14px 16px; display:flex; align-items:center; gap:10px;}
+.brand{display:flex; align-items:center; gap:8px; font-weight:700; letter-spacing:.5px; font-size:17px;}
+.brand .dot{width:9px; height:9px; border-radius:50%; background:var(--danger);}
+.topbar .spacer{flex:1;}
+.icon-btn{background:var(--surface2); border:1px solid var(--border); color:var(--text); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px;}
+.icon-btn:active{background:var(--surface3);}
+.avatar{width:32px; height:32px; border-radius:50%; overflow:hidden; border:1px solid var(--border-strong); background:var(--surface3);}
+.avatar img{width:100%; height:100%; object-fit:cover;}
+
+.back-row{display:flex; align-items:center; gap:10px; padding:14px 16px 4px;}
+.back-row .icon-btn{width:36px; height:36px;}
+.back-row h1{font-size:18px; margin:0; font-weight:700;}
+
+main{padding:12px 16px 24px;}
+.section-title{font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text3); margin:22px 2px 10px;}
+.section-title:first-child{margin-top:6px;}
+
+/* Dashboard grid */
+.tile-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.tile{background:var(--surface1); border:1px solid var(--border); border-radius:var(--radius); padding:16px; display:flex; flex-direction:column; gap:10px; min-height:96px; text-align:left;}
+.tile:active{background:var(--surface2);}
+.tile .t-icon{font-size:20px;}
+.tile .t-count{font-size:28px; font-weight:700; line-height:1;}
+.tile .t-label{font-size:13px; color:var(--text2); font-weight:600;}
+.tile.attn{grid-column:1 / -1; background:var(--danger-bg); border-color:#4a2420; flex-direction:row; align-items:center; justify-content:space-between; min-height:auto;}
+.tile.attn .t-count{color:var(--danger); font-size:24px;}
+.tile.money .t-count{font-size:22px;}
+
+/* Needs attention list */
+.attn-card{background:var(--danger-bg); border:1px solid #4a2420; border-radius:var(--radius-sm); padding:12px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:10px;}
+.attn-card .who{font-weight:700; font-size:14px;}
+.attn-card .why{font-size:12.5px; color:#e8a49e; margin-top:2px;}
+.attn-card .chev{color:var(--text3); font-size:18px;}
+
+/* Order list rows */
+.order-row{background:var(--surface1); border:1px solid var(--border); border-radius:var(--radius-sm); padding:13px 14px; margin-bottom:8px; display:flex; align-items:center; gap:12px;}
+.order-row:active{background:var(--surface2);}
+.order-row .num{font-size:12px; color:var(--text3); font-weight:700;}
+.order-row .main{flex:1; min-width:0;}
+.order-row .name{font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.order-row .sub{font-size:12.5px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;}
+.order-row .right{display:flex; flex-direction:column; align-items:flex-end; gap:4px;}
+.badge{display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:700; padding:4px 8px; border-radius:100px; white-space:nowrap;}
+.rush-chip{background:var(--danger-bg); color:#f28c84; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:100px; letter-spacing:.04em;}
+
+.empty{text-align:center; padding:50px 20px; color:var(--text3);}
+.empty i{font-size:32px; display:block; margin-bottom:10px; opacity:.5;}
+
+/* filter chips */
+.chip-row{display:flex; gap:8px; overflow-x:auto; padding:2px 0 4px; margin-bottom:6px;}
+.chip-row::-webkit-scrollbar{display:none;}
+.chip{flex:none; background:var(--surface1); border:1px solid var(--border); color:var(--text2); padding:8px 13px; border-radius:100px; font-size:13px; font-weight:600; white-space:nowrap;}
+.chip.active{background:var(--accent); color:#111; border-color:var(--accent);}
+
+/* search */
+.searchbar{display:flex; align-items:center; gap:8px; background:var(--surface1); border:1px solid var(--border); border-radius:12px; padding:10px 14px; margin-bottom:12px;}
+.searchbar input{background:none; border:none; outline:none; color:var(--text); flex:1; font-size:15px;}
+.searchbar i{color:var(--text3);}
+
+/* FAB */
+.fab{position:fixed; right:18px; bottom:22px; z-index:50; background:var(--accent); color:#111; border:none; border-radius:100px; padding:15px 22px; font-weight:800; font-size:15px; display:flex; align-items:center; gap:8px; box-shadow:0 8px 24px rgba(0,0,0,.5);}
+.fab:active{opacity:.85;}
+
+/* order detail */
+.hero{background:var(--surface1); border:1px solid var(--border); border-radius:var(--radius); padding:18px; margin-bottom:6px;}
+.hero .num{color:var(--text3); font-size:12.5px; font-weight:700; letter-spacing:.03em;}
+.hero .name{font-size:21px; font-weight:800; margin-top:2px;}
+.hero .company{color:var(--text2); font-size:14px; margin-top:1px;}
+.hero .status-btn{margin-top:14px; width:100%; text-align:left; background:var(--surface2); border:1px solid var(--border-strong); border-radius:var(--radius-sm); padding:12px 14px; display:flex; align-items:center; justify-content:space-between; color:var(--text); font-weight:700; font-size:14.5px;}
+.hero .meta-row{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
+.progress-wrap{margin-top:12px;}
+.progress-track{height:8px; background:var(--surface2); border-radius:100px; overflow:hidden;}
+.progress-fill{height:100%; background:var(--ok); border-radius:100px;}
+.progress-label{font-size:12.5px; color:var(--text2); margin-top:6px; display:flex; justify-content:space-between;}
+
+.card{background:var(--surface1); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:12px;}
+.card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+.card-head h3{margin:0; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text2);}
+.card-head button{background:none; border:none; color:var(--info); font-weight:700; font-size:13px;}
+.kv{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); font-size:14.5px; gap:12px;}
+.kv:last-child{border-bottom:none;}
+.kv .k{color:var(--text2);}
+.kv .v{font-weight:600; text-align:right;}
+.kv .v.mono{font-family:ui-monospace,monospace;}
+.balance-hero{display:flex; justify-content:space-between; align-items:center; padding:4px 2px 2px;}
+.balance-hero .amt{font-size:26px; font-weight:800;}
+.balance-hero .amt.zero{color:var(--ok);}
+.balance-hero .amt.due{color:var(--warn);}
+
+.thread-row{display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border); gap:10px;}
+.thread-row:last-of-type{border-bottom:none;}
+.thread-row .info{font-size:14.5px; font-weight:600;}
+.thread-row .info .type{color:var(--text2); font-weight:500; font-size:12.5px; display:block; margin-top:1px;}
+.thread-row .del{background:none; border:none; color:var(--text3); font-size:17px; flex:none;}
+.add-row-btn{width:100%; text-align:center; background:var(--surface2); border:1px dashed var(--border-strong); color:var(--text2); border-radius:var(--radius-sm); padding:11px; font-weight:700; font-size:13.5px; margin-top:8px;}
+.pill-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;}
+.pill{font-size:12px; font-weight:700; padding:5px 10px; border-radius:100px; display:flex; align-items:center; gap:5px;}
+.pill.yes{background:var(--ok-bg); color:var(--ok);}
+.pill.no{background:var(--warn-bg); color:var(--warn);}
+
+textarea.notes{width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text); padding:10px 12px; font-size:14.5px; min-height:70px; resize:vertical;}
+
+.art-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:4px;}
+.art-thumb{aspect-ratio:1; border-radius:10px; overflow:hidden; background:var(--surface2); border:1px solid var(--border);}
+.art-thumb img{width:100%; height:100%; object-fit:cover;}
+.art-add{aspect-ratio:1; border-radius:10px; background:var(--surface2); border:1px dashed var(--border-strong); display:flex; align-items:center; justify-content:center; color:var(--text3); font-size:22px;}
+
+/* forms */
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:12.5px; font-weight:700; color:var(--text2); margin-bottom:6px; text-transform:uppercase; letter-spacing:.04em;}
+.field input[type=text],.field input[type=number],.field input[type=date],.field input[type=tel],.field input[type=email],.field select,.field textarea{
+  width:100%; background:var(--surface1); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text); padding:12px 13px; outline:none;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--border-strong);}
+.field textarea{min-height:70px; resize:vertical;}
+.field-row{display:flex; gap:10px;}
+.field-row .field{flex:1;}
+.toggle-row{display:flex; align-items:center; justify-content:space-between; background:var(--surface1); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 14px; margin-bottom:14px;}
+.toggle-row span{font-weight:600; font-size:14.5px;}
+.switch{position:relative; width:46px; height:27px; background:var(--surface3); border-radius:100px; border:1px solid var(--border-strong); flex:none;}
+.switch.on{background:var(--danger);}
+.switch .knob{position:absolute; top:2px; left:2px; width:21px; height:21px; background:#fff; border-radius:50%; transition:transform .15s;}
+.switch.on .knob{transform:translateX(19px);}
+
+.client-pick{background:var(--surface1); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 14px; display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+.client-pick .name{font-weight:700;}
+.client-pick .sub{font-size:12.5px; color:var(--text2);}
+.client-pick button{background:none; border:none; color:var(--info); font-weight:700; font-size:13px;}
+
+.btn{display:block; width:100%; text-align:center; padding:14px; border-radius:var(--radius-sm); font-weight:800; font-size:15px; border:none;}
+.btn-primary{background:var(--accent); color:#111;}
+.btn-primary:active{opacity:.85;}
+.btn-secondary{background:var(--surface2); color:var(--text); border:1px solid var(--border-strong);}
+.btn-danger-outline{background:var(--danger-bg); color:var(--danger); border:1px solid #4a2420;}
+
+/* sheet / modal */
+.overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; display:flex; align-items:flex-end;}
+.sheet{background:var(--surface1); border-top-left-radius:20px; border-top-right-radius:20px; border:1px solid var(--border); width:100%; max-height:85vh; overflow-y:auto; padding:10px 16px 26px;}
+.sheet-handle{width:36px; height:4px; background:var(--border-strong); border-radius:100px; margin:8px auto 14px;}
+.sheet h2{font-size:17px; margin:0 0 14px; font-weight:800;}
+.status-opt{display:flex; align-items:center; justify-content:space-between; padding:14px 4px; border-bottom:1px solid var(--border); font-weight:700; font-size:15px;}
+.status-opt:last-child{border-bottom:none;}
+.status-opt .l{display:flex; align-items:center; gap:10px;}
+.status-opt i.check{color:var(--ok); font-size:20px;}
+
+@media (min-width:720px){
+  main{max-width:640px; margin:0 auto;}
+  .back-row, .topbar{max-width:640px; margin:0 auto; position:relative;}
+  .topbar{position:sticky;}
+}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- config / constants ---------------- */
+
+var SUPABASE_URL = "https://inpcsdvycdxekozfadhf.supabase.co";
+var SUPABASE_KEY = "sb_publishable_KRmJWsioEu9yWkc_agD3cA_S3hCdVwY";
+
+var STATUSES = [
+  {k:"new_inquiry", l:"New Inquiry", i:"ti-inbox-in", c:"info"},
+  {k:"quote_needed", l:"Quote Needed", i:"ti-currency-dollar", c:"warn"},
+  {k:"quote_sent", l:"Quote Sent", i:"ti-send", c:"warn"},
+  {k:"waiting_approval", l:"Waiting for Approval", i:"ti-clock", c:"warn"},
+  {k:"approved", l:"Approved", i:"ti-check", c:"ok"},
+  {k:"digitizing", l:"Digitizing", i:"ti-brush", c:"purple"},
+  {k:"waiting_materials", l:"Waiting for Materials", i:"ti-package", c:"pink"},
+  {k:"ready_production", l:"Ready for Production", i:"ti-settings", c:"info"},
+  {k:"in_production", l:"In Production", i:"ti-hammer", c:"warn"},
+  {k:"qc", l:"QC", i:"ti-search", c:"purple"},
+  {k:"ready_pickup", l:"Ready for Pickup", i:"ti-package-export", c:"ok"},
+  {k:"shipped", l:"Shipped", i:"ti-truck", c:"ok"},
+  {k:"completed", l:"Completed", i:"ti-flag-3", c:"text3"},
+  {k:"cancelled", l:"Cancelled", i:"ti-x", c:"text3"}
+];
+function statusOf(k){ for (var i=0;i<STATUSES.length;i++) if (STATUSES[i].k===k) return STATUSES[i]; return STATUSES[0]; }
+
+var SUPPLIED_BY = [["us","We supply"],["client","Client supplies"]];
+var STABILIZER_TYPES = [["none","None / not needed"],["tear_away","Tear away"],["cutaway","Cutaway"],["water_soluble","Water soluble"],["no_show_mesh","No show mesh"],["other","Other"]];
+function stabilizerLabel(k){ for (var i=0;i<STABILIZER_TYPES.length;i++) if (STABILIZER_TYPES[i][0]===k) return STABILIZER_TYPES[i][1]; return "—"; }
+
+/* ---------------- state ---------------- */
+
+var S = {
+  sb:null,
+  orders:[], clients:[],
+  ordersLoaded:false, clientsLoaded:false,
+  route:{view:"dashboard"},
+  sheet:null,
+  toast:null
+};
+
+function fmtMoney(n){
+  n = Number(n)||0;
+  return "$" + n.toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:2});
+}
+function todayStr(){ var d=new Date(); return d.toISOString().slice(0,10); }
+function daysUntil(dateStr){
+  if(!dateStr) return null;
+  var d = new Date(dateStr+"T00:00:00");
+  var t = new Date(todayStr()+"T00:00:00");
+  return Math.round((d-t)/86400000);
+}
+function fmtDate(dateStr){
+  if(!dateStr) return "—";
+  var d = new Date(dateStr+"T00:00:00");
+  return d.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+}
+function esc(s){
+  s = (s===undefined||s===null) ? "" : String(s);
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function uid(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
+
+/* ---------------- computed helpers ---------------- */
+
+function balanceDue(o){
+  var due = 0;
+  if (o.digitizing_fee && !o.digitizing_paid) due += Number(o.digitizing_fee)||0;
+  if (o.deposit_amount && !o.deposit_paid) due += Number(o.deposit_amount)||0;
+  if (o.final_payment_amount && !o.final_payment_received) due += Number(o.final_payment_amount)||0;
+  return due;
+}
+function totalOrderValue(o){
+  return (Number(o.digitizing_fee)||0) + (Number(o.deposit_amount)||0) + (Number(o.final_payment_amount)||0);
+}
+function isActive(o){ return o.status !== "completed" && o.status !== "cancelled"; }
+
+function attentionReasons(o){
+  var r = [];
+  if (!isActive(o)) return r;
+  if ((o.status==="quote_sent" || o.status==="waiting_approval") && !o.quote_approved) r.push("Quote not approved");
+  if (o.status==="digitizing" && o.digitizing_fee && !o.digitizing_paid) r.push("Digitizing fee unpaid");
+  if ((o.status==="ready_pickup" || o.status==="shipped") && o.final_payment_amount && !o.final_payment_received) r.push("Final payment missing");
+  if (o.status==="waiting_materials") r.push("Waiting on materials");
+  var d = daysUntil(o.due_date);
+  if (d !== null){
+    if (d < 0) r.push("Overdue " + Math.abs(d) + "d");
+    else if (d <= 2) r.push(d===0 ? "Due today" : "Due in " + d + "d");
+  }
+  return r;
+}
+
+function clientById(id){
+  for (var i=0;i<S.clients.length;i++) if (S.clients[i].id===id) return S.clients[i];
+  return null;
+}
+function ordersForClient(cid){
+  return S.orders.filter(function(o){ return o.client_id===cid; }).sort(function(a,b){ return (b.created_at||"").localeCompare(a.created_at||""); });
+}
+
+/* ---------------- db access ---------------- */
+
+function rowToObj(row){
+  var o = Object.assign({}, row.data || {});
+  o.id = row.id;
+  if (!o.created_at) o.created_at = row.created_at;
+  return o;
+}
+
+function loadAndSubscribe(table, arrKey, loadedKey){
+  S.sb.from(table).select("*").then(function(res){
+    if (res.error){ console.error(table, res.error); }
+    S[arrKey] = (res.data || []).map(rowToObj);
+    S[loadedKey] = true;
+    render();
+  });
+  S.sb.channel(table + "-changes")
+    .on("postgres_changes", {event:"*", schema:"public", table:table}, function(payload){
+      var arr = S[arrKey];
+      if (payload.eventType === "DELETE"){
+        S[arrKey] = arr.filter(function(o){ return o.id !== payload.old.id; });
+      } else {
+        var obj = rowToObj(payload.new);
+        var idx = arr.findIndex(function(o){ return o.id === obj.id; });
+        if (idx >= 0) arr[idx] = obj; else arr.push(obj);
+      }
+      render();
+    })
+    .subscribe();
+}
+
+function subscribeAll(){
+  loadAndSubscribe("orders", "orders", "ordersLoaded");
+  loadAndSubscribe("clients", "clients", "clientsLoaded");
+}
+
+function nextOrderNumber(){
+  return S.sb.rpc("next_order_number").then(function(res){
+    if (res.error) throw res.error;
+    return res.data;
+  });
+}
+
+function createOrder(data){
+  return nextOrderNumber().then(function(num){
+    data.number = num;
+    data.created_at = new Date().toISOString();
+    data.updated_at = data.created_at;
+    return S.sb.from("orders").insert({data:data}).select().single();
+  }).then(function(res){
+    if (res.error) throw res.error;
+    var obj = rowToObj(res.data);
+    var idx = S.orders.findIndex(function(o){ return o.id===obj.id; });
+    if (idx>=0) S.orders[idx]=obj; else S.orders.push(obj);
+    return {id: obj.id};
+  });
+}
+function updateOrder(id, patch){
+  var current = S.orders.find(function(o){ return o.id===id; }) || {};
+  var merged = Object.assign({}, current, patch);
+  delete merged.id;
+  merged.updated_at = new Date().toISOString();
+  var idx = S.orders.findIndex(function(o){ return o.id===id; });
+  if (idx>=0) S.orders[idx] = Object.assign({id:id}, merged);
+  return S.sb.from("orders").update({data:merged, updated_at:merged.updated_at}).eq("id", id).then(function(res){
+    if (res.error) throw res.error;
+  });
+}
+function createClient(data){
+  data.created_at = new Date().toISOString();
+  return S.sb.from("clients").insert({data:data}).select().single().then(function(res){
+    if (res.error) throw res.error;
+    var obj = rowToObj(res.data);
+    var idx = S.clients.findIndex(function(c){ return c.id===obj.id; });
+    if (idx>=0) S.clients[idx]=obj; else S.clients.push(obj);
+    return {id: obj.id};
+  });
+}
+function updateClient(id, patch){
+  var current = S.clients.find(function(c){ return c.id===id; }) || {};
+  var merged = Object.assign({}, current, patch);
+  delete merged.id;
+  var idx = S.clients.findIndex(function(c){ return c.id===id; });
+  if (idx>=0) S.clients[idx] = Object.assign({id:id}, merged);
+  return S.sb.from("clients").update({data:merged}).eq("id", id).then(function(res){
+    if (res.error) throw res.error;
+  });
+}
+
+/* ---------------- routing ---------------- */
+
+function go(route){
+  S.route = route;
+  window.scrollTo(0,0);
+  render();
+}
+
+/* ---------------- render: shell ---------------- */
+
+var app = document.getElementById("app");
+
+function render(){
+  var view = S.route.view;
+  var html = "";
+  html += topbarHtml();
+  if (!S.ordersLoaded || !S.clientsLoaded){
+    html += "<main><div class='empty'><i class='ti ti-loader-2'></i>Loading orders…</div></main>";
+  } else if (view==="dashboard") html += dashboardHtml();
+  else if (view==="orders") html += ordersListHtml();
+  else if (view==="attention") html += attentionListHtml();
+  else if (view==="order") html += orderDetailHtml(S.route.id);
+  else if (view==="order-form") html += orderFormHtml(S.route.id||null);
+  else if (view==="clients") html += clientsListHtml();
+  else if (view==="client") html += clientDetailHtml(S.route.id);
+  else if (view==="client-form") html += clientFormHtml(S.route.id||null);
+  else if (view==="search") html += searchHtml();
+
+  if (view!=="order-form" && view!=="client-form"){
+    html += "<button class='fab' onclick=\"App.newOrder()\"><i class='ti ti-plus'></i> New Order</button>";
+  }
+
+  html += sheetHtml();
+
+  app.innerHTML = html;
+  afterRender();
+}
+
+function topbarHtml(){
+  var showBack = S.route.view !== "dashboard";
+  var titleMap = {
+    orders:"Orders", attention:"Needs Attention", order:"Order", "order-form": S.route.id?"Edit Order":"New Order",
+    clients:"Clients", client:"Client", "client-form": S.route.id?"Edit Client":"New Client", search:"Search"
+  };
+  if (showBack){
+    return "<div class='back-row'>"+
+      "<button class='icon-btn' onclick=\"App.back()\"><i class='ti ti-chevron-left'></i></button>"+
+      "<h1>"+esc(titleMap[S.route.view]||"")+"</h1>"+
+    "</div>";
+  }
+  return "<div class='topbar'>"+
+    "<div class='brand'><span class='dot'></span>DEADBOLT</div>"+
+    "<div class='spacer'></div>"+
+    "<button class='icon-btn' onclick=\"App.goto('search')\"><i class='ti ti-search'></i></button>"+
+    "<button class='icon-btn' onclick=\"App.goto('clients')\"><i class='ti ti-users'></i></button>"+
+  "</div>";
+}
+
+/* ---------------- dashboard ---------------- */
+
+function dashboardHtml(){
+  var active = S.orders.filter(isActive);
+  var attn = active.filter(function(o){ return attentionReasons(o).length>0; });
+  var byStatus = function(keys){ return active.filter(function(o){ return keys.indexOf(o.status)>=0; }); };
+  var newInq = byStatus(["new_inquiry"]);
+  var quotes = byStatus(["quote_needed","quote_sent","waiting_approval"]);
+  var digitizing = byStatus(["digitizing"]);
+  var materials = byStatus(["waiting_materials"]);
+  var readyProd = byStatus(["ready_production"]);
+  var inProd = byStatus(["in_production"]);
+  var readyShip = byStatus(["ready_pickup","shipped"]);
+  var moneyOrders = S.orders.filter(function(o){ return o.status!=="cancelled" && balanceDue(o)>0; });
+  var moneyTotal = moneyOrders.reduce(function(s,o){ return s+balanceDue(o); },0);
+  var dueSoon = active.filter(function(o){ var d=daysUntil(o.due_date); return d!==null && d<=7 && d>=0; });
+
+  var h = "<main>";
+  if (attn.length){
+    h += "<button class='tile attn' style='width:100%;border:1px solid #4a2420' onclick=\"App.goto('attention')\">"+
+      "<div><div class='t-label' style='color:#f0a99f'>🔴 NEEDS ATTENTION</div><div class='t-count'>"+attn.length+"</div></div>"+
+      "<i class='ti ti-chevron-right' style='font-size:20px;color:#f0a99f'></i>"+
+    "</button>";
+  }
+  h += "<div class='tile-grid'>";
+  h += tile("📥","New Inquiries", newInq.length, "orders", "new_inquiry");
+  h += tile("💵","Quotes", quotes.length, "orders", "quotes");
+  h += tile("🎨","Needs Digitizing", digitizing.length, "orders", "digitizing");
+  h += tile("🧰","Waiting on Materials", materials.length, "orders", "waiting_materials");
+  h += tile("⚙️","Ready for Production", readyProd.length, "orders", "ready_production");
+  h += tile("🔨","In Production", inProd.length, "orders", "in_production");
+  h += tile("📦","Ready to Ship/Pickup", readyShip.length, "orders", "shipping");
+  h += tileMoney("💰","Money Due", moneyTotal, moneyOrders.length);
+  h += tile("📅","Due This Week", dueSoon.length, "orders", "due_soon");
+  h += "</div>";
+
+  h += "<div class='section-title'>All Orders</div>";
+  var recent = S.orders.slice().sort(function(a,b){ return (b.created_at||"").localeCompare(a.created_at||""); }).slice(0,6);
+  if (!recent.length){
+    h += "<div class='empty'><i class='ti ti-clipboard-off'></i>No orders yet. Tap New Order to add one.</div>";
+  } else {
+    recent.forEach(function(o){ h += orderRowHtml(o); });
+    h += "<button class='btn btn-secondary' style='margin-top:6px' onclick=\"App.goto('orders')\">View all orders</button>";
+  }
+  h += "</main>";
+  return h;
+}
+function tile(emoji,label,count,view,filter){
+  return "<button class='tile' onclick=\"App.gotoFiltered('"+view+"','"+filter+"')\">"+
+    "<div class='t-icon'>"+emoji+"</div>"+
+    "<div><div class='t-count'>"+count+"</div><div class='t-label'>"+esc(label)+"</div></div>"+
+  "</button>";
+}
+function tileMoney(emoji,label,total,count){
+  return "<button class='tile money' onclick=\"App.gotoFiltered('orders','money')\">"+
+    "<div class='t-icon'>"+emoji+"</div>"+
+    "<div><div class='t-count'>"+fmtMoney(total)+"</div><div class='t-label'>"+esc(label)+" · "+count+"</div></div>"+
+  "</button>";
+}
+
+function attentionListHtml(){
+  var active = S.orders.filter(isActive);
+  var attn = active.map(function(o){ return {o:o, r:attentionReasons(o)}; }).filter(function(x){ return x.r.length>0; });
+  attn.sort(function(a,b){ return (a.o.due_date||"9999").localeCompare(b.o.due_date||"9999"); });
+  var h = "<main>";
+  if (!attn.length){ h += "<div class='empty'><i class='ti ti-check'></i>Nothing needs attention right now.</div>"; }
+  attn.forEach(function(x){
+    var o = x.o, c = clientById(o.client_id);
+    h += "<div class='attn-card' onclick=\"App.goto('order','"+o.id+"')\">"+
+      "<div><div class='who'>#"+o.number+" "+esc(c?c.name:o.client_name||"Client")+"</div>"+
+      "<div class='why'>"+esc(x.r.join(" · "))+"</div></div>"+
+      "<i class='ti ti-chevron-right chev'></i></div>";
+  });
+  h += "</main>";
+  return h;
+}
+
+/* ---------------- orders list ---------------- */
+
+function ordersListHtml(){
+  var f = S.route.filter || "all";
+  var list = S.orders.slice();
+  var title = "All";
+  if (f==="new_inquiry"){ list=list.filter(function(o){return o.status==="new_inquiry";}); title="New Inquiries"; }
+  else if (f==="quotes"){ list=list.filter(function(o){return ["quote_needed","quote_sent","waiting_approval"].indexOf(o.status)>=0;}); title="Quotes"; }
+  else if (f==="digitizing"){ list=list.filter(function(o){return o.status==="digitizing";}); title="Needs Digitizing"; }
+  else if (f==="waiting_materials"){ list=list.filter(function(o){return o.status==="waiting_materials";}); title="Waiting on Materials"; }
+  else if (f==="ready_production"){ list=list.filter(function(o){return o.status==="ready_production";}); title="Ready for Production"; }
+  else if (f==="in_production"){ list=list.filter(function(o){return o.status==="in_production";}); title="In Production"; }
+  else if (f==="shipping"){ list=list.filter(function(o){return ["ready_pickup","shipped"].indexOf(o.status)>=0;}); title="Ready to Ship/Pickup"; }
+  else if (f==="money"){ list=list.filter(function(o){return o.status!=="cancelled" && balanceDue(o)>0;}); title="Money Due"; }
+  else if (f==="due_soon"){ list=list.filter(function(o){ var d=daysUntil(o.due_date); return isActive(o) && d!==null && d<=7 && d>=0; }); title="Due This Week"; }
+  else { list = list.filter(isActive); }
+
+  list.sort(function(a,b){ return (a.due_date||"9999").localeCompare(b.due_date||"9999"); });
+
+  var h = "<main>";
+  h += "<div class='chip-row'>"+
+    chip("Active", f==="all") + chip("New", f==="new_inquiry") + chip("Quotes", f==="quotes") +
+    chip("Digitizing", f==="digitizing") + chip("Materials", f==="waiting_materials") +
+    chip("Production", f==="in_production") + chip("Shipping", f==="shipping") + chip("Money Due", f==="money") +
+  "</div>";
+  h += "<div class='section-title'>"+esc(title)+" · "+list.length+"</div>";
+  if (!list.length){ h += "<div class='empty'><i class='ti ti-clipboard-off'></i>No orders here.</div>"; }
+  list.forEach(function(o){ h += orderRowHtml(o); });
+  h += "</main>";
+  return h;
+}
+function chip(label, active){
+  var f = {Active:"all", New:"new_inquiry", Quotes:"quotes", Digitizing:"digitizing", Materials:"waiting_materials", Production:"in_production", Shipping:"shipping", "Money Due":"money"}[label];
+  return "<button class='chip"+(active?" active":"")+"' onclick=\"App.gotoFiltered('orders','"+f+"')\">"+esc(label)+"</button>";
+}
+
+function orderRowHtml(o){
+  var c = clientById(o.client_id);
+  var st = statusOf(o.status);
+  var name = c ? c.name : (o.client_name||"Unnamed");
+  var sub = (o.garment_type||"") + (o.quantity?(" · "+o.quantity):"");
+  var due = o.due_date ? fmtDate(o.due_date) : "";
+  var d = daysUntil(o.due_date);
+  var dueColor = (d!==null && d<0 && isActive(o)) ? "var(--danger)" : (d!==null && d<=2 && isActive(o) ? "var(--warn)" : "var(--text2)");
+  return "<div class='order-row' onclick=\"App.goto('order','"+o.id+"')\">"+
+    "<div class='main'>"+
+      "<div class='num'>#"+o.number+(o.rush?" <span class='rush-chip'>RUSH</span>":"")+"</div>"+
+      "<div class='name'>"+esc(name)+"</div>"+
+      "<div class='sub'>"+esc(sub)+"</div>"+
+    "</div>"+
+    "<div class='right'>"+
+      "<span class='badge' style='background:var(--"+st.c+"-bg,var(--surface2));color:var(--"+st.c+",var(--text2))'>"+iconOrDot(st.i)+" "+esc(st.l)+"</span>"+
+      (due?"<span style='font-size:11.5px;color:"+dueColor+";font-weight:700'>"+esc(due)+"</span>":"")+
+    "</div>"+
+  "</div>";
+}
+function iconOrDot(i){ return "<i class='ti "+i+"' style='font-size:12px'></i>"; }
+
+/* ---------------- search ---------------- */
+
+function searchHtml(){
+  var q = (S.route.q||"").toLowerCase();
+  var h = "<main>";
+  h += "<div class='searchbar'><i class='ti ti-search'></i><input id='searchInput' placeholder='Client, company, order #, phone, status…' value=\""+esc(S.route.q||"")+"\" oninput='App.setSearch(this.value)'></div>";
+  if (q.length < 1){
+    h += "<div class='empty'><i class='ti ti-search'></i>Search orders and clients.</div></main>";
+    return h;
+  }
+  var matches = S.orders.filter(function(o){
+    var c = clientById(o.client_id);
+    var hay = [o.number, c?c.name:o.client_name, c?c.company:o.company, c?c.phone:"", c?c.email:"", o.status, o.garment_type, o.due_date].join(" ").toLowerCase();
+    return hay.indexOf(q) >= 0;
+  });
+  h += "<div class='section-title'>Orders · "+matches.length+"</div>";
+  if (!matches.length) h += "<div class='empty' style='padding:20px'><i class='ti ti-mood-empty'></i>No matches.</div>";
+  matches.forEach(function(o){ h += orderRowHtml(o); });
+  h += "</main>";
+  return h;
+}
+
+/* ---------------- order detail ---------------- */
+
+function orderDetailHtml(id){
+  var o = S.orders.filter(function(x){return x.id===id;})[0];
+  if (!o) return "<main><div class='empty'><i class='ti ti-mood-empty'></i>Order not found.</div></main>";
+  var c = clientById(o.client_id);
+  var st = statusOf(o.status);
+  var bal = balanceDue(o);
+  var pct = o.quantity ? Math.round((Number(o.qty_completed)||0)/Number(o.quantity)*100) : 0;
+  var d = daysUntil(o.due_date);
+  var dueLabel = o.due_date ? (d<0?("OVERDUE "+Math.abs(d)+"d"):(d===0?"DUE TODAY":"DUE "+fmtDate(o.due_date).toUpperCase())) : "No due date";
+  var dueColor = (d!==null && d<0) ? "var(--danger)" : (d!==null && d<=2 ? "var(--warn)" : "var(--text2)");
+
+  var h = "<main>";
+  h += "<div class='hero'>";
+  h += "<div class='num'>DEADBOLT #"+o.number+(o.rush?" <span class='rush-chip'>RUSH</span>":"")+"</div>";
+  h += "<div class='name'>"+esc(c?c.name:o.client_name||"Unnamed")+"</div>";
+  h += "<div class='company'>"+esc((c&&c.company)||o.company||"")+(o.garment_type?" · "+esc(o.garment_type):"")+(o.quantity?" · "+o.quantity:"")+"</div>";
+  h += "<div class='meta-row'>";
+  h += "<span class='badge' style='background:var(--"+st.c+"-bg,var(--surface2));color:var(--"+st.c+",var(--text2))'>"+iconOrDot(st.i)+" "+esc(st.l)+"</span>";
+  if (o.due_date) h += "<span class='badge' style='background:var(--surface2);color:"+dueColor+"'><i class='ti ti-calendar' style='font-size:12px'></i> "+esc(dueLabel)+"</span>";
+  h += "</div>";
+  if (o.quantity){
+    h += "<div class='progress-wrap'><div class='progress-track'><div class='progress-fill' style='width:"+pct+"%'></div></div>"+
+      "<div class='progress-label'><span>"+(Number(o.qty_completed)||0)+" / "+o.quantity+" complete</span><span>"+pct+"%</span></div></div>";
+  }
+  h += "<button class='status-btn' onclick=\"App.openStatusSheet('"+o.id+"')\"><span>Change status</span><i class='ti ti-chevron-right'></i></button>";
+  h += "</div>";
+
+  // balance
+  h += "<div class='card'><div class='card-head'><h3>Payment</h3><button onclick=\"App.editOrder('"+o.id+"')\">Edit</button></div>";
+  h += "<div class='balance-hero'><span style='color:var(--text2);font-weight:600'>Balance due</span><span class='amt "+(bal>0?"due":"zero")+"'>"+fmtMoney(bal)+"</span></div>";
+  h += "<div class='kv'><span class='k'>Quote</span><span class='v'>"+fmtMoney(o.quote_amount)+" "+(o.quote_approved?"<span class='pill yes' style='margin-left:6px'>Approved</span>":(o.quote_sent?"<span class='pill no' style='margin-left:6px'>Waiting</span>":""))+"</span></div>";
+  h += "<div class='kv'><span class='k'>Digitizing fee</span><span class='v'>"+fmtMoney(o.digitizing_fee)+" "+pill(o.digitizing_paid,"Paid","Unpaid")+"</span></div>";
+  h += "<div class='kv'><span class='k'>Deposit</span><span class='v'>"+fmtMoney(o.deposit_amount)+" "+pill(o.deposit_paid,"Paid","Unpaid")+"</span></div>";
+  h += "<div class='kv'><span class='k'>Final payment</span><span class='v'>"+fmtMoney(o.final_payment_amount)+" "+pill(o.final_payment_received,"Received","Due")+"</span></div>";
+  h += "</div>";
+
+  // client
+  h += "<div class='card'><div class='card-head'><h3>Client</h3><button onclick=\"App.goto('client','"+(c?c.id:"")+"')\">"+(c?"View":"")+"</button></div>";
+  h += "<div class='kv'><span class='k'>Name</span><span class='v'>"+esc(c?c.name:o.client_name||"—")+"</span></div>";
+  h += "<div class='kv'><span class='k'>Company</span><span class='v'>"+esc((c&&c.company)||o.company||"—")+"</span></div>";
+  h += "<div class='kv'><span class='k'>Phone</span><span class='v'>"+esc((c&&c.phone)||"—")+"</span></div>";
+  h += "<div class='kv'><span class='k'>Email</span><span class='v'>"+esc((c&&c.email)||"—")+"</span></div>";
+  h += "</div>";
+
+  // order info
+  h += "<div class='card'><div class='card-head'><h3>Order Info</h3><button onclick=\"App.editOrder('"+o.id+"')\">Edit</button></div>";
+  h += "<div class='kv'><span class='k'>Garment</span><span class='v'>"+esc([o.garment_brand,o.garment_type,o.garment_color].filter(Boolean).join(" ")||"—")+"</span></div>";
+  h += "<div class='kv'><span class='k'>Sizes</span><span class='v'>"+esc(o.garment_sizes||"—")+"</span></div>";
+  h += "<div class='kv'><span class='k'>Supplied by</span><span class='v'>"+esc(o.garment_supplied_by==="client"?"Client":"Deadbolt")+"</span></div>";
+  h += "<div class='kv'><span class='k'>Placement</span><span class='v'>"+esc(o.placement||"—")+"</span></div>";
+  h += "<div class='kv'><span class='k'>Dimensions</span><span class='v'>"+esc(o.design_dimensions||"—")+"</span></div>";
+  h += "<div class='kv'><span class='k'>Created</span><span class='v'>"+esc(o.created_at?fmtDate(o.created_at.slice(0,10)):"—")+"</span></div>";
+  h += "</div>";
+
+  // materials
+  h += "<div class='card'><div class='card-head'><h3>Materials</h3><button onclick=\"App.editOrder('"+o.id+"')\">Edit</button></div>";
+  h += "<div class='kv'><span class='k'>Stabilizer</span><span class='v'>"+esc(stabilizerLabel(o.stabilizer_type||"none"))+(o.stabilizer_color?" · "+esc(o.stabilizer_color):"")+"</span></div>";
+  h += "<div class='kv'><span class='k'>Foam</span><span class='v'>"+esc(o.foam||"—")+"</span></div>";
+  h += "<div class='kv'><span class='k'>Tools / other</span><span class='v'>"+esc(o.materials_tools_notes||"—")+"</span></div>";
+  h += "<div style='font-size:13px;color:var(--text3);margin:12px 0 2px;font-weight:700;text-transform:uppercase;letter-spacing:.04em'>Thread / bobbins needed</div>";
+  var threads = o.threads || [];
+  if (!threads.length){ h += "<div style='font-size:13.5px;color:var(--text3);padding:6px 0'>None added.</div>"; }
+  threads.forEach(function(t){
+    h += "<div class='thread-row'><span class='info'>"+(t.qty?esc(t.qty)+"&times; ":"")+esc(t.color||"—")+"<span class='type'>"+esc(t.type||"")+"</span></span>"+
+      "<button class='del' onclick=\"App.removeThread('"+o.id+"','"+t.id+"')\"><i class='ti ti-x'></i></button></div>";
+  });
+  h += "<button class='add-row-btn' onclick=\"App.openThreadSheet('"+o.id+"')\"><i class='ti ti-plus'></i> Add thread / bobbin</button>";
+  h += "</div>";
+
+  // artwork
+  h += "<div class='card'><div class='card-head'><h3>Artwork</h3></div>";
+  h += "<div class='art-grid'>";
+  (o.artwork_urls||[]).forEach(function(url){
+    h += "<div class='art-thumb'><img src='"+esc(url)+"' loading='lazy'></div>";
+  });
+  h += "<label class='art-add' style='cursor:pointer'><i class='ti ti-plus'></i><input type='file' accept='image/*,application/pdf' multiple class='hide' onchange=\"App.uploadArt('"+o.id+"',this.files)\"></label>";
+  h += "</div></div>";
+
+  // notes
+  h += "<div class='card'><div class='card-head'><h3>Notes</h3></div>";
+  h += "<div style='font-size:13px;color:var(--text3);margin-bottom:4px'>Client notes</div>";
+  h += "<textarea class='notes' id='clientNotes' oninput=\"App.debounceField('"+o.id+"','client_notes',this.value)\" onblur=\"App.saveField('"+o.id+"','client_notes',this.value)\">"+esc(o.client_notes||"")+"</textarea>";
+  h += "<div style='font-size:13px;color:var(--text3);margin:12px 0 4px'>Internal notes</div>";
+  h += "<textarea class='notes' id='internalNotes' oninput=\"App.debounceField('"+o.id+"','internal_notes',this.value)\" onblur=\"App.saveField('"+o.id+"','internal_notes',this.value)\">"+esc(o.internal_notes||"")+"</textarea>";
+  h += "</div>";
+
+  h += "</main>";
+  return h;
+}
+function pill(bool,yes,no){
+  return "<span class='pill "+(bool?"yes":"no")+"' style='margin-left:6px'>"+(bool?yes:no)+"</span>";
+}
+
+/* ---------------- order form (new / edit) ---------------- */
+
+function orderFormHtml(id){
+  var editing = !!id;
+  var base = editing ? (S.orders.filter(function(x){return x.id===id;})[0] || {}) : {};
+  var o = S.route.draft || base;
+  var c = o.client_id ? clientById(o.client_id) : null;
+
+  var h = "<main><form id='orderForm' onsubmit='return false;'>";
+
+  h += "<div class='client-pick'>";
+  if (c){
+    h += "<div><div class='name'>"+esc(c.name)+"</div><div class='sub'>"+esc(c.company||"")+"</div></div>";
+    h += "<button type='button' onclick=\"App.openClientPicker()\">Change</button>";
+  } else {
+    h += "<div><div class='name' style='color:var(--text3)'>No client selected</div></div>";
+    h += "<button type='button' onclick=\"App.openClientPicker()\">Select client</button>";
+  }
+  h += "</div>";
+
+  h += fieldRow([
+    ["Quantity","f_quantity","number", o.quantity||""],
+    ["Due date","f_due_date","date", o.due_date||""]
+  ]);
+  h += toggleRow("Rush order","f_rush", !!o.rush);
+
+  h += field2("Garment type","f_garment_type","text", o.garment_type||"", "Hoodie, hat, jacket…");
+  h += fieldRow([
+    ["Brand","f_garment_brand","text", o.garment_brand||""],
+    ["Color","f_garment_color","text", o.garment_color||""]
+  ]);
+  h += field2("Sizes","f_garment_sizes","text", o.garment_sizes||"", "S-M-L-XL breakdown");
+  h += selectField("Garment supplied by","f_supplied_by", SUPPLIED_BY, o.garment_supplied_by||"us");
+  h += field2("Placement","f_placement","text", o.placement||"", "Left chest, jacket back…");
+  h += field2("Design dimensions","f_dimensions","text", o.design_dimensions||"");
+
+  h += "<div class='section-title' style='margin-top:24px'>Materials</div>";
+  h += selectField("Stabilizer","f_stabilizer_type", STABILIZER_TYPES, o.stabilizer_type||"none");
+  h += field2("Stabilizer color","f_stabilizer_color","text", o.stabilizer_color||"", "White, black…");
+  h += field2("Foam","f_foam","text", o.foam||"", "3mm poly foam, none…");
+  h += "<div class='field'><label>Tools / other materials</label><textarea id='f_materials_tools_notes'>"+esc(o.materials_tools_notes||"")+"</textarea></div>";
+
+  h += "<div class='section-title' style='margin-top:24px'>Quote &amp; Payment</div>";
+  h += fieldRow([
+    ["Quote amount","f_quote_amount","number", o.quote_amount||""],
+    ["Digitizing fee","f_digitizing_fee","number", o.digitizing_fee||""]
+  ]);
+  h += fieldRow([
+    ["Deposit amount","f_deposit_amount","number", o.deposit_amount||""],
+    ["Final payment","f_final_payment_amount","number", o.final_payment_amount||""]
+  ]);
+  h += toggleRow("Quote sent","f_quote_sent", !!o.quote_sent);
+  h += toggleRow("Quote approved","f_quote_approved", !!o.quote_approved);
+  h += toggleRow("Digitizing fee paid","f_digitizing_paid", !!o.digitizing_paid);
+  h += toggleRow("Deposit paid","f_deposit_paid", !!o.deposit_paid);
+  h += toggleRow("Final payment received","f_final_payment_received", !!o.final_payment_received);
+
+  h += "<div class='section-title' style='margin-top:24px'>Notes</div>";
+  h += "<div class='field'><label>Client notes</label><textarea id='f_client_notes'>"+esc(o.client_notes||"")+"</textarea></div>";
+  h += "<div class='field'><label>Internal notes</label><textarea id='f_internal_notes'>"+esc(o.internal_notes||"")+"</textarea></div>";
+
+  h += "<button class='btn btn-primary' type='button' onclick=\"App.submitOrder("+(editing?("'"+id+"'"):"null")+")\" style='margin-top:8px'>"+(editing?"Save Changes":"Create Order")+"</button>";
+  if (editing) h += "<button class='btn btn-danger-outline' type='button' style='margin-top:10px' onclick=\"App.cancelOrder('"+id+"')\">Cancel this order</button>";
+  h += "</form></main>";
+  return h;
+}
+function field2(label,id,type,val,placeholder){
+  return "<div class='field'><label>"+esc(label)+"</label><input type='"+type+"' id='"+id+"' value=\""+esc(val)+"\""+(placeholder?" placeholder=\""+esc(placeholder)+"\"":"")+"></div>";
+}
+function fieldRow(pairs){
+  var h = "<div class='field-row'>";
+  pairs.forEach(function(p){
+    h += "<div class='field'><label>"+esc(p[0])+"</label><input type='"+p[2]+"' id='"+p[1]+"' value=\""+esc(p[3])+"\"></div>";
+  });
+  h += "</div>";
+  return h;
+}
+function selectField(label,id,options,val){
+  var h = "<div class='field'><label>"+esc(label)+"</label><select id='"+id+"'>";
+  options.forEach(function(o){ h += "<option value='"+o[0]+"'"+(o[0]===val?" selected":"")+">"+esc(o[1])+"</option>"; });
+  h += "</select></div>";
+  return h;
+}
+function toggleRow(label,id,on){
+  return "<div class='toggle-row' onclick=\"App.toggleSwitch('"+id+"')\"><span>"+esc(label)+"</span><div class='switch"+(on?" on":"")+"' id='"+id+"'><div class='knob'></div></div></div>";
+}
+
+/* ---------------- clients ---------------- */
+
+function clientsListHtml(){
+  var list = S.clients.slice().sort(function(a,b){ return (a.name||"").localeCompare(b.name||""); });
+  var h = "<main>";
+  h += "<div class='searchbar'><i class='ti ti-search'></i><input placeholder='Search clients…' oninput='App.filterClients(this.value)' id='clientSearch' value=\""+esc(S.route.q||"")+"\"></div>";
+  var q = (S.route.q||"").toLowerCase();
+  if (q) list = list.filter(function(c){ return ((c.name||"")+" "+(c.company||"")).toLowerCase().indexOf(q)>=0; });
+  h += "<button class='btn btn-secondary' style='margin-bottom:14px' onclick=\"App.newClient()\"><i class='ti ti-plus'></i> New Client</button>";
+  if (!list.length){ h += "<div class='empty'><i class='ti ti-users'></i>No clients yet.</div>"; }
+  list.forEach(function(c){
+    var os = ordersForClient(c.id);
+    var spent = os.reduce(function(s,o){ return s+totalOrderValue(o); },0);
+    h += "<div class='order-row' onclick=\"App.goto('client','"+c.id+"')\">"+
+      "<div class='main'><div class='name'>"+esc(c.name)+"</div><div class='sub'>"+esc(c.company||"")+"</div></div>"+
+      "<div class='right'><span style='font-size:13px;font-weight:700'>"+fmtMoney(spent)+"</span><span style='font-size:11.5px;color:var(--text3)'>"+os.length+" order"+(os.length===1?"":"s")+"</span></div>"+
+    "</div>";
+  });
+  h += "</main>";
+  return h;
+}
+
+function clientDetailHtml(id){
+  var c = clientById(id);
+  if (!c) return "<main><div class='empty'><i class='ti ti-mood-empty'></i>Client not found.</div></main>";
+  var os = ordersForClient(c.id);
+  var spent = os.reduce(function(s,o){ return s+totalOrderValue(o); },0);
+  var h = "<main>";
+  h += "<div class='hero'>";
+  h += "<div class='name'>"+esc(c.name)+"</div>";
+  h += "<div class='company'>"+esc(c.company||"")+"</div>";
+  h += "</div>";
+  h += "<div class='card'>";
+  h += "<div class='card-head'><h3>Contact</h3><button onclick=\"App.goto('client-form','"+c.id+"')\">Edit</button></div>";
+  h += "<div class='kv'><span class='k'>Phone</span><span class='v'>"+esc(c.phone||"—")+"</span></div>";
+  h += "<div class='kv'><span class='k'>Email</span><span class='v'>"+esc(c.email||"—")+"</span></div>";
+  h += "<div class='kv'><span class='k'>Instagram</span><span class='v'>"+esc(c.instagram||"—")+"</span></div>";
+  h += "<div class='kv'><span class='k'>Address</span><span class='v'>"+esc(c.address||"—")+"</span></div>";
+  h += "</div>";
+  h += "<div class='card'><div class='card-head'><h3>Summary</h3></div>";
+  h += "<div class='kv'><span class='k'>Total spent</span><span class='v'>"+fmtMoney(spent)+"</span></div>";
+  h += "<div class='kv'><span class='k'>Orders</span><span class='v'>"+os.length+"</span></div>";
+  h += "<div class='kv'><span class='k'>Last order</span><span class='v'>"+(os[0]?fmtDate(os[0].created_at.slice(0,10)):"—")+"</span></div>";
+  h += "</div>";
+  if (c.notes){ h += "<div class='card'><div class='card-head'><h3>Notes</h3></div><div style='font-size:14.5px;color:var(--text2)'>"+esc(c.notes)+"</div></div>"; }
+  h += "<div class='section-title'>Order History</div>";
+  if (!os.length){ h += "<div class='empty' style='padding:20px'><i class='ti ti-clipboard-off'></i>No orders yet.</div>"; }
+  os.forEach(function(o){ h += orderRowHtml(o); });
+  h += "</main>";
+  return h;
+}
+
+function clientFormHtml(id){
+  var editing = !!id;
+  var c = editing ? clientById(id) : {};
+  var h = "<main><form onsubmit='return false;'>";
+  h += field2("Name","cf_name","text",c.name||"");
+  h += field2("Company","cf_company","text",c.company||"");
+  h += fieldRow([["Phone","cf_phone","tel",c.phone||""],["Email","cf_email","email",c.email||""]]);
+  h += field2("Instagram","cf_instagram","text",c.instagram||"");
+  h += "<div class='field'><label>Address</label><textarea id='cf_address'>"+esc(c.address||"")+"</textarea></div>";
+  h += "<div class='field'><label>Notes</label><textarea id='cf_notes'>"+esc(c.notes||"")+"</textarea></div>";
+  h += "<button class='btn btn-primary' type='button' onclick=\"App.submitClient("+(editing?("'"+id+"'"):"null")+")\">"+(editing?"Save Changes":"Add Client")+"</button>";
+  h += "</form></main>";
+  return h;
+}
+
+/* ---------------- sheets / modals ---------------- */
+
+function sheetHtml(){
+  if (!S.sheet) return "";
+  if (S.sheet.type==="status"){
+    var o = S.orders.filter(function(x){return x.id===S.sheet.orderId;})[0];
+    if (!o) { S.sheet=null; return ""; }
+    var h = "<div class='overlay' onclick=\"if(event.target===this) App.closeSheet()\"><div class='sheet'><div class='sheet-handle'></div><h2>Order status</h2>";
+    STATUSES.forEach(function(st){
+      h += "<div class='status-opt' onclick=\"App.setStatus('"+o.id+"','"+st.k+"')\"><span class='l'><i class='ti "+st.i+"'></i> "+esc(st.l)+"</span>"+(o.status===st.k?"<i class='ti ti-check check'></i>":"")+"</div>";
+    });
+    h += "</div></div>";
+    return h;
+  }
+  if (S.sheet.type==="clientPicker"){
+    var q = (S.sheet.q||"").toLowerCase();
+    var list = S.clients.filter(function(c){ return !q || ((c.name||"")+" "+(c.company||"")).toLowerCase().indexOf(q)>=0; }).sort(function(a,b){return (a.name||"").localeCompare(b.name||"");});
+    var h2 = "<div class='overlay' onclick=\"if(event.target===this) App.closeSheet()\"><div class='sheet'><div class='sheet-handle'></div><h2>Select client</h2>";
+    h2 += "<div class='searchbar'><i class='ti ti-search'></i><input autofocus placeholder='Search clients…' oninput='App.filterClientPicker(this.value)' value=\""+esc(S.sheet.q||"")+"\"></div>";
+    h2 += "<button class='btn btn-secondary' style='margin-bottom:10px' onclick='App.newClientFromPicker()'><i class='ti ti-plus'></i> New client</button>";
+    list.forEach(function(c){
+      h2 += "<div class='status-opt' style='cursor:pointer' onclick=\"App.pickClient('"+c.id+"')\"><span class='l'>"+esc(c.name)+(c.company?" · "+esc(c.company):"")+"</span></div>";
+    });
+    if (!list.length) h2 += "<div class='empty' style='padding:16px'>No matches.</div>";
+    h2 += "</div></div>";
+    return h2;
+  }
+  if (S.sheet.type==="addThread"){
+    var h3 = "<div class='overlay' onclick=\"if(event.target===this) App.closeSheet()\"><div class='sheet'><div class='sheet-handle'></div><h2>Add thread / bobbin</h2>";
+    h3 += fieldRow([["Qty","th_qty","number",""],["Color","th_color","text",""]]);
+    h3 += field2("Type / brand","th_type","text","","Polyester, Isacord, bobbin…");
+    h3 += "<button class='btn btn-primary' onclick=\"App.addThread('"+S.sheet.orderId+"')\">Add</button>";
+    h3 += "</div></div>";
+    return h3;
+  }
+  return "";
+}
+
+function afterRender(){
+  // sync toggle switch styles already handled via class in markup
+}
+
+/* ---------------- capability init ---------------- */
+
+function initSupabase(){
+  try{
+    if (!window.supabase){
+      document.getElementById("app").innerHTML = "<main style='padding-top:60px'><div class='empty'><i class='ti ti-alert-triangle'></i>Couldn't load the database library. Check your internet connection and reload.</div></main>";
+      return;
+    }
+    S.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    subscribeAll();
+  } catch(err){
+    console.error("supabase init failed", err);
+    document.getElementById("app").innerHTML = "<main style='padding-top:60px'><div class='empty'><i class='ti ti-alert-triangle'></i>Something went wrong loading Deadbolt. Try reloading.</div></main>";
+  }
+}
+
+/* ---------------- App (event handlers, exposed globally) ---------------- */
+
+window.App = {
+  goto: function(view,id){ go({view:view,id:id}); },
+  back: function(){
+    if (S.route.view==="order" || S.route.view==="order-form") go({view:"orders"});
+    else if (S.route.view==="client" || S.route.view==="client-form") go({view:"clients"});
+    else go({view:"dashboard"});
+  },
+  gotoFiltered: function(view,filter){ go({view:view, filter:filter}); },
+  setSearch: function(v){ S.route.q = v; render(); var el=document.getElementById("searchInput"); if(el){ el.focus(); el.setSelectionRange(v.length,v.length); } },
+  filterClients: function(v){ S.route.q = v; render(); var el=document.getElementById("clientSearch"); if(el){ el.focus(); el.setSelectionRange(v.length,v.length); } },
+  filterClientPicker: function(v){ S.sheet.q = v; render(); },
+
+  newOrder: function(){ go({view:"order-form", id:null}); },
+  editOrder: function(id){ go({view:"order-form", id:id}); },
+  newClient: function(){ go({view:"client-form", id:null}); },
+
+  toggleSwitch: function(id){
+    var el = document.getElementById(id);
+    if (el) el.classList.toggle("on");
+  },
+
+  openStatusSheet: function(orderId){ S.sheet = {type:"status", orderId:orderId}; render(); },
+  closeSheet: function(){ S.sheet = null; render(); },
+  setStatus: function(orderId, status){
+    updateOrder(orderId, {status:status}).catch(function(e){ alert("Couldn't update status. Try again."); console.error(e); });
+    S.sheet = null; render();
+  },
+
+  openClientPicker: function(){
+    if (S.route.view==="order-form"){ S.route.draft = collectOrderFormDraft(); }
+    S.sheet = {type:"clientPicker", q:""}; render();
+  },
+  pickClient: function(clientId){
+    if (S.route.view==="order-form"){
+      S.route.draft = collectOrderFormDraft();
+      S.route.draft.client_id = clientId;
+    }
+    S.sheet = null; render();
+  },
+  newClientFromPicker: function(){
+    if (S.route.view==="order-form"){ S.route.draft = collectOrderFormDraft(); }
+    S.sheet = null;
+    S.route._returnToOrderForm = true;
+    go({view:"client-form", id:null});
+  },
+
+  submitClient: function(id){
+    var data = {
+      name: val("cf_name"), company: val("cf_company"), phone: val("cf_phone"),
+      email: val("cf_email"), instagram: val("cf_instagram"), address: val("cf_address"), notes: val("cf_notes")
+    };
+    if (!data.name){ alert("Client name is required."); return; }
+    if (id){
+      updateClient(id, data).then(function(){ go({view:"client", id:id}); }).catch(errAlert);
+    } else {
+      createClient(data).then(function(ref){
+        if (S.route._returnToOrderForm){
+          var draft = S.route.draft || {};
+          draft.client_id = ref.id;
+          go({view:"order-form", id:null, draft:draft});
+        } else {
+          go({view:"client", id:ref.id});
+        }
+      }).catch(errAlert);
+    }
+  },
+
+  submitOrder: function(id){
+    var draft = collectOrderFormDraft();
+    if (!draft.client_id){ alert("Select a client first."); return; }
+    if (id){
+      updateOrder(id, draft).then(function(){ go({view:"order", id:id}); }).catch(errAlert);
+    } else {
+      createOrder(draft).then(function(ref){ go({view:"order", id:ref.id}); }).catch(errAlert);
+    }
+  },
+  cancelOrder: function(id){
+    if (!confirm("Mark this order cancelled?")) return;
+    updateOrder(id, {status:"cancelled"}).then(function(){ go({view:"order", id:id}); }).catch(errAlert);
+  },
+
+  saveField: function(orderId, field, value){
+    var patch = {}; patch[field] = value;
+    updateOrder(orderId, patch).catch(errAlert);
+  },
+  debounceField: function(orderId, field, value){
+    clearTimeout(window.__dbTimer);
+    window.__dbTimer = setTimeout(function(){
+      var patch = {}; patch[field] = value;
+      updateOrder(orderId, patch).catch(function(){});
+    }, 900);
+  },
+
+  openThreadSheet: function(orderId){ S.sheet = {type:"addThread", orderId:orderId}; render(); },
+  addThread: function(orderId){
+    var o = S.orders.filter(function(x){return x.id===orderId;})[0];
+    var color = val("th_color");
+    if (!color){ alert("Enter a color."); return; }
+    var threads = (o && o.threads) ? o.threads.slice() : [];
+    threads.push({id: uid(), qty: val("th_qty"), color: color, type: val("th_type")});
+    S.sheet = null;
+    updateOrder(orderId, {threads: threads}).catch(errAlert);
+    render();
+  },
+  removeThread: function(orderId, threadId){
+    var o = S.orders.filter(function(x){return x.id===orderId;})[0];
+    if (!o) return;
+    var threads = (o.threads||[]).filter(function(t){ return t.id!==threadId; });
+    updateOrder(orderId, {threads: threads}).catch(errAlert);
+  },
+
+  uploadArt: function(orderId, files){
+    var o = S.orders.filter(function(x){return x.id===orderId;})[0];
+    var urls = (o && o.artwork_urls) ? o.artwork_urls.slice() : [];
+    var jobs = Array.prototype.map.call(files, function(f){
+      var path = orderId + "/" + Date.now() + "-" + Math.random().toString(36).slice(2) + "-" + f.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+      return S.sb.storage.from("artwork").upload(path, f).then(function(res){
+        if (res.error) throw res.error;
+        return S.sb.storage.from("artwork").getPublicUrl(path).data.publicUrl;
+      });
+    });
+    Promise.all(jobs).then(function(results){
+      results.forEach(function(url){ urls.push(url); });
+      return updateOrder(orderId, {artwork_urls: urls});
+    }).then(function(){ render(); })
+      .catch(function(e){ alert("Upload failed. Make sure the 'artwork' storage bucket exists in Supabase."); console.error(e); });
+  }
+};
+
+function val(id){ var el=document.getElementById(id); return el ? el.value.trim() : ""; }
+function num(id){ var v = val(id); return v==="" ? null : Number(v); }
+function on(id){ var el=document.getElementById(id); return el ? el.classList.contains("on") : false; }
+function errAlert(e){ console.error(e); alert("Something went wrong saving that. Try again."); }
+
+function collectOrderFormDraft(){
+  var o = S.route.draft || (S.route.id ? S.orders.filter(function(x){return x.id===S.route.id;})[0] : {}) || {};
+  return {
+    client_id: o.client_id || null,
+    quantity: num("f_quantity"),
+    due_date: val("f_due_date"),
+    rush: on("f_rush"),
+    garment_type: val("f_garment_type"),
+    garment_brand: val("f_garment_brand"),
+    garment_color: val("f_garment_color"),
+    garment_sizes: val("f_garment_sizes"),
+    garment_supplied_by: (document.getElementById("f_supplied_by")||{}).value || "us",
+    placement: val("f_placement"),
+    design_dimensions: val("f_dimensions"),
+    stabilizer_type: (document.getElementById("f_stabilizer_type")||{}).value || "none",
+    stabilizer_color: val("f_stabilizer_color"),
+    foam: val("f_foam"),
+    materials_tools_notes: val("f_materials_tools_notes"),
+    threads: o.threads || [],
+    quote_amount: num("f_quote_amount"),
+    digitizing_fee: num("f_digitizing_fee"),
+    deposit_amount: num("f_deposit_amount"),
+    final_payment_amount: num("f_final_payment_amount"),
+    quote_sent: on("f_quote_sent"),
+    quote_approved: on("f_quote_approved"),
+    digitizing_paid: on("f_digitizing_paid"),
+    deposit_paid: on("f_deposit_paid"),
+    final_payment_received: on("f_final_payment_received"),
+    client_notes: val("f_client_notes"),
+    internal_notes: val("f_internal_notes"),
+    status: o.status || "new_inquiry",
+    qty_completed: o.qty_completed || 0,
+    artwork_urls: o.artwork_urls || []
+  };
+}
+
+/* ---------------- boot ---------------- */
+
+app.innerHTML = "<main style='padding-top:70px'><div class='empty'><i class='ti ti-loader-2'></i>Connecting…</div></main>";
+initSupabase();
+
+})();
+</script>
+</body>
+</html>
